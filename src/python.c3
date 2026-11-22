@@ -2,7 +2,7 @@ module python;
 import std::collections::map;
 import std::core::mem;
 import std::io;
-import std::os::win32;
+import std::os;
 
 
 
@@ -41,7 +41,7 @@ struct PyMachine {
 // globals
 //-----------------------------------------------------------------------------
 PyMachine* g_pPyMachine = null;
-Win32_HMODULE g_hPyDLL;
+DylibHandle g_hPyDLL;
 ZString[] pyFuncs = {
 	"PyImport_ImportModule",
 	"Py_Initialize",
@@ -70,7 +70,7 @@ macro py_validate_funcs(...)
 		$aliases = $aliases +++ @sprintf("alias %sFn = fn %s;\n", $sym_name, $sig);
 		$globals = $globals +++ @sprintf("%sFn %s;\n", $sym_name, $c3_name);
 		$body = $body +++ @sprintf(
-			"\t%s = (%sFn)win32::getProcAddress(g_hPyDLL, \"%s\");\n"
+			"\t%s = (%sFn)os::dlsym(g_hPyDLL, \"%s\");\n"
 			"\tif (!%s) { io::printfn(\"Function %s not exits\"); return -1; }\n",
 			$c3_name, $sym_name, $sym_name,
 			$c3_name, $sym_name
@@ -135,7 +135,7 @@ fn int PyMachine.init(&this, ZString py_dll_path) {
 		return 1;
 	}
 	this.mdls.init(mem);
-	g_hPyDLL = win32::loadLibraryA((Win32_LPCSTR)py_dll_path);
+	g_hPyDLL = os::dlopen(py_dll_path);
 	if (!g_hPyDLL) {
 		io::printn("Failed to load Python DLL");
 		return 2;

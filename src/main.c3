@@ -1,21 +1,29 @@
 import python;
 import pyscene;
 import std::io;
-import std::os::win32;
+import libc;
 
-const CInt VK_ESCAPE = 0x1B;
+bool keep_running = true;
 
-extern fn short getAsyncKeyState(CInt vKey) @cname("GetAsyncKeyState");
-
-fn void onChromiumAction(ZString a)
+fn void handle_sigint(int sig)
 {
-	io::printfn("action: %s", a);
+	io::printn("ctrl+c pressed");
+	keep_running = false;
+}
+
+fn ZString get_python_lib_name()
+{
+    $if env::WIN32:
+        return "python314.dll";
+    $else
+        return "libpython3.14.so";
+    $endif
 }
 
 fn int main(String[] args)
 {
 	PyMachine m;
-	if (m.init("C:/Python314/python314.dll") != 0) {
+	if (m.init(get_python_lib_name()) != 0) {
 		io::printn("Failed to initialize Python");
 		return 1;
 	}
@@ -40,11 +48,13 @@ fn int main(String[] args)
 		return 1;
 	}
 
+	libc::signal(libc::SIGINT, &handle_sigint);
+
 	io::printn("Triangle added. Open http://127.0.0.1:8000");
-	io::printn("Press Escape to stop the scene server");
+	io::printn("Press Ctrl + C to stop the scene server");
 
 	int exit_code = 0;
-	while ((getAsyncKeyState(VK_ESCAPE) & 0x8000) == 0) {
+	while (keep_running) {
 		if (scene.think() != 0) {
 			io::printn("Scene server think failed");
 			exit_code = 1;
