@@ -144,30 +144,7 @@ fn int PyMachine.init(&this, ZString py_dll_path) {
 	pyFuncsValidate();
 	py_init();
 	g_pPyMachine = this;
-	WString str = (WString)mem::malloc(2048);
-	mem::set(str, 0, 2048);
-	win32::getModuleFileNameW(null, str, 1024);
-
-	char* b = (char*)str;
-	for(int i = (int)str.len()*2-2; i>=0; i-=2) {
-		if(b[i] != 92) { continue; }
-		if(b[i+1]) { continue; }  
-		b[i]	= 0;
-		break;
-	}
-
-	void* sys_path	= pySys_GetObject("path");
-	void* exe_dir	= pyUnicode_FromWideChar(str, str.len());
-	if (sys_path != null && exe_dir != null) {
-		pyList_Append(sys_path, exe_dir);
-	}
-	if (exe_dir != null) {
-		py_DecRef(exe_dir);
-	}
-
-	mem::free(str);
-
-	py_run("import config\nconfig.hello()");
+	py_run("import sys; sys.path.append('..//scripts'); sys.path.append('scripts//'); import config; config.hello()");
 
 	return 0;
 }
