@@ -32,6 +32,7 @@
     "whisper2": {
       // Executable or library.
       "type": "executable",
+      "link-args": ["-Wl,--export-dynamic"]
       // Additional libraries, sources
       // and overrides of global settings here.
     },

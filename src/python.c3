@@ -3,6 +3,7 @@ import std::collections::map;
 import std::core::mem;
 import std::io;
 import std::os;
+import libc;
 
 
 
@@ -135,7 +136,7 @@ fn int PyMachine.init(&this, ZString py_dll_path) {
 		return 1;
 	}
 	this.mdls.init(mem);
-	g_hPyDLL = os::dlopen(py_dll_path);
+	g_hPyDLL = os::dlopen(py_dll_path, { .global_symbols = true });
 	if (!g_hPyDLL) {
 		io::printn("Failed to load Python DLL");
 		return 2;
