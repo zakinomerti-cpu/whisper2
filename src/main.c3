@@ -45,7 +45,7 @@ fn int main(String[] args)
 		return 1;
 	}
 
-	double[] vertices = pmio.getVertices("C://projects//whisper//resources//miku.pmd");
+	double[] vertices = pmio.getVertices("resources//miku.pmd");
 	defer mem::free(vertices.ptr);
 	if (!vertices.len || vertices.len % 24 != 0) {
 		io::printn("Failed to load PMD vertices");
