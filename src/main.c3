@@ -1,6 +1,8 @@
 import python;
 import pyscene;
+import pymeshio;
 import std::io;
+import std::core::mem;
 import libc;
 
 bool keep_running = true;
@@ -35,14 +37,25 @@ fn int main(String[] args)
 		return 1;
 	}
 
-	double[] triangle = {
-		-0.5, -0.5, 2.0,  0.0, 0.0, 1.0,  0.0, 0.0,
-		 0.5, -0.5, 2.0,  0.0, 0.0, 1.0,  1.0, 0.0,
-		 0.0,  0.12, 2.0,  0.0, 0.0, 1.0,  0.5, 1.0,
-	};
+	PyPymeshioModule pmio;
+	if(pmio.init(&m) != 0) {
+		io::printn("Failed to initialize pymeshio");
+		scene.shutDown();
+		m.shutDown();
+		return 1;
+	}
 
-	if (scene.add_vertices(triangle) != 0) {
-		io::printn("Failed to add triangle");
+	double[] vertices = pmio.getVertices("C://projects//whisper//resources//miku.pmd");
+	defer mem::free(vertices.ptr);
+	if (!vertices.len || vertices.len % 24 != 0) {
+		io::printn("Failed to load PMD vertices");
+		scene.shutDown();
+		m.shutDown();
+		return 1;
+	}
+
+	if (scene.set_vertices(vertices) != 0) {
+		io::printn("Failed to send PMD vertices");
 		scene.shutDown();
 		m.shutDown();
 		return 1;
@@ -50,7 +63,7 @@ fn int main(String[] args)
 
 	libc::signal(libc::SIGINT, &handle_sigint);
 
-	io::printn("Triangle added. Open http://127.0.0.1:8000");
+	io::printfn("PMD loaded: %d vertices. Open http://127.0.0.1:8000", vertices.len / 8);
 	io::printn("Press Ctrl + C to stop the scene server");
 
 	int exit_code = 0;

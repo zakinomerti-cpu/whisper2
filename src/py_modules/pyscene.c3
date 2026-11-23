@@ -37,6 +37,20 @@ fn int PySceneModule.think(&this) {
 	return 0;
 }
 
+fn int PySceneModule.set_vertices(&this, double[] vertices) {
+	if (!this.base.isInit) return -1;
+
+	PyFunc* f = this.base.funcs.get("set_vertices")!!;
+	PyObject* result = f.call(&vertices);
+	if (!result) {
+		p::pyErr_Print();
+		return -1;
+	}
+
+	p::py_DecRef(result);
+	return 0;
+}
+
 fn int PySceneModule.add_vertices(&this, double[] vertices) {
 	if (!this.base.isInit) return -1;
 

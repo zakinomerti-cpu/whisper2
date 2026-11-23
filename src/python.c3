@@ -3,6 +3,7 @@ import std::collections::map;
 import std::core::mem;
 import std::io;
 import std::os;
+import std::io::file;
 import libc;
 
 
@@ -47,6 +48,13 @@ ZString[] pyFuncs = {
 	"PyImport_ImportModule",
 	"Py_Initialize",
 };
+
+
+
+//-----------------------------------------------------------------------------
+// constants
+//-----------------------------------------------------------------------------
+const int PY_FILE_INPUT = 257;
 
 
 
@@ -100,6 +108,9 @@ $expand(py_validate_funcs(
 	"pyFloat_FromDouble", "PyFloat_FromDouble", "PyObject* (double)",
 
 
+	"pyDict_SetItemString", "PyDict_SetItemString", "int (PyObject*, char*, PyObject*)",
+
+
 	"py_init", "Py_Initialize", "void()",
 	"py_run", "PyRun_SimpleString", "int(char* command)",
 	"py_finalize", "Py_Finalize", "void()",
@@ -138,7 +149,7 @@ fn int PyMachine.init(&this, ZString py_dll_path) {
 	this.mdls.init(mem);
 	g_hPyDLL = os::dlopen(py_dll_path, { .global_symbols = true });
 	if (!g_hPyDLL) {
-		io::printn("Failed to load Python DLL");
+		io::printn("Failed to load Python Dynamic lib");
 		return 2;
 	}
 
@@ -146,6 +157,12 @@ fn int PyMachine.init(&this, ZString py_dll_path) {
 	py_init();
 	g_pPyMachine = this;
 	py_run("import sys; sys.path.append('..//scripts'); sys.path.append('scripts//'); import config; config.hello()");
+	py_run("sys.path.append('..//third_party'); sys.path.append('third_party//');");
+	/*py_run(
+		"import pmx_test;"
+		"pmx_test.run_test();"
+	);
+	*/
 
 	return 0;
 }
@@ -221,6 +238,7 @@ fn int PyModule.init
 
 			//си реализации может и не быть! поэтому первым
 			//может быть null
+			io::printf("%s\n", func_name);
 			f.init(null, func_name, pf);
 			this.deepcopy_addFunc(&f);
 		}

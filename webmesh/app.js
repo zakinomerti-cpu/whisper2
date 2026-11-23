@@ -111,17 +111,21 @@ var viewMatrix = new Float32Array([
     0, 0, -6, 1
 ]);
 
-function createModel(rotationX, rotationY) {
+function createModel(rotationX, rotationY, center) {
     var cx = Math.cos(rotationX);
     var sx = Math.sin(rotationX);
     var cy = Math.cos(rotationY);
     var sy = Math.sin(rotationY);
 
+    var tx = -(cy * center[0] + sx * sy * center[1] - cx * sy * center[2]);
+    var ty = -(cx * center[1] + sx * center[2]);
+    var tz = -(sy * center[0] - sx * cy * center[1] + cx * cy * center[2]);
+
     return new Float32Array([
         cy, sx * sy, -cx * sy, 0,
         0, cx, sx, 0,
         sy, -sx * cy, cx * cy, 0,
-        0, 0, 0, 1
+        tx, ty, tz, 1
     ]);
 }
 
@@ -139,6 +143,42 @@ var textureLocation = gl.getUniformLocation(program, "uTexture");
 var lightDirectionLocation = gl.getUniformLocation(program, "uLightDirection");
 
 var vertices = new Float32Array([]);
+var meshCenter = [0, 0, 0];
+var meshRadius = 1;
+
+function updateMeshBounds() {
+    if (vertices.length < 24) {
+        meshCenter = [0, 0, 0];
+        meshRadius = 1;
+        return;
+    }
+
+    var min = [Infinity, Infinity, Infinity];
+    var max = [-Infinity, -Infinity, -Infinity];
+
+    for (var i = 0; i < vertices.length; i += 8) {
+        for (var axis = 0; axis < 3; axis++) {
+            min[axis] = Math.min(min[axis], vertices[i + axis]);
+            max[axis] = Math.max(max[axis], vertices[i + axis]);
+        }
+    }
+
+    meshCenter = [
+        (min[0] + max[0]) * 0.5,
+        (min[1] + max[1]) * 0.5,
+        (min[2] + max[2]) * 0.5
+    ];
+
+    meshRadius = 0;
+    for (var j = 0; j < vertices.length; j += 8) {
+        var dx = vertices[j] - meshCenter[0];
+        var dy = vertices[j + 1] - meshCenter[1];
+        var dz = vertices[j + 2] - meshCenter[2];
+        meshRadius = Math.max(meshRadius, Math.sqrt(dx * dx + dy * dy + dz * dz));
+    }
+
+    meshRadius = Math.max(meshRadius, 0.001);
+}
 
 var vertexBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -219,10 +259,17 @@ function render(time) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     var aspect = canvas.width / canvas.height;
-    var projection = createPerspective(Math.PI / 4, aspect, 0.1, 100.0);
-    var model = createModel(rotationX, rotationY);
+    var fieldOfView = Math.PI / 4;
+    var fitFieldOfView = 2 * Math.atan(Math.tan(fieldOfView / 2) * Math.min(aspect, 1));
+    var cameraDistance = meshRadius / Math.sin(fitFieldOfView / 2) * 1.2;
+    var near = Math.max(0.01, cameraDistance - meshRadius * 1.5);
+    var far = cameraDistance + meshRadius * 1.5;
+    var projection = createPerspective(fieldOfView, aspect, near, far);
+    var model = createModel(rotationX, rotationY, meshCenter);
+    viewMatrix[14] = -cameraDistance;
 
     gl.uniformMatrix4fv(projectionLocation, false, projection);
+    gl.uniformMatrix4fv(viewLocation, false, viewMatrix);
     gl.uniformMatrix4fv(modelLocation, false, model);
     gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
 
@@ -253,6 +300,7 @@ events.onmessage = function(event) {
     currentVersion = state.version;
     vertices = new Float32Array(state.data);
     vertexCount = vertices.length / 8;
+    updateMeshBounds();
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
